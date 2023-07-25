@@ -162,13 +162,11 @@ class TypeAnalyzer(
       inst match {
         case ILet(id, expr) =>
           for {
-            optval <- get(_.lookupLocalOpt(id))
+            exist <- get(_.exists(AbsRefId(id)))
             v <- transfer(expr)
             _ <- modify(_.defineLocal(id -> v))
           } yield {
-            val AbsOptValue(v, abs) = optval
-            val exist = abs.isBottom && v.isAbsent != AVT
-            if (exist && config.dupAssign) {
+            if (exist == AVT && config.dupAssign) {
               val vap = VarAssignPoint(cp, id)
               addMismatch(DuplicateAssignMismatch(vap))
             }

@@ -54,6 +54,7 @@ trait Domain extends domain.Domain[State] {
     def lookupLocal(x: Local): AbsValue =
       lookupLocalOpt(x).value
 
+    /** lookup local variables with optional values */
     def lookupLocalOpt(x: Local): AbsOptValue =
       elem.locals.getOrElse(x, AbsValue.optional.Empty)
 
@@ -63,7 +64,13 @@ trait Domain extends domain.Domain[State] {
     /** existence checks */
     def exists(ref: AbsRefValue): AbsValue = ref match
       case AbsRefId(id) =>
-        !directLookup(id).isAbsent
+        id match {
+          case x: Local =>
+            val AbsOptValue(v, abs) = lookupLocalOpt(x)
+            if (abs.isBottom) !v.isAbsent
+            else AbsValue(!v.isBottom) ⊔ AVF
+          case x: Global => !lookupGlobal(x).isAbsent
+        }
       case AbsRefProp(base, prop) =>
         !elem.get(base, prop).isAbsent
 
