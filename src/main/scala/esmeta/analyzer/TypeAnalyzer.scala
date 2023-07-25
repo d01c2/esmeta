@@ -173,6 +173,21 @@ class TypeAnalyzer(
           }
         case _ => super.transfer(inst)
       }
+
+    override def transfer(
+      rv: AbsRefValue,
+    )(using cp: ControlPoint): Result[AbsValue] =
+      for {
+        exist <- get(_.exists(rv))
+        v <- get(_.get(rv, cp))
+      } yield {
+        if (exist == AVF && config.unknownVar) {
+          rv match
+            case _: AbsRefId   => warning(s"unknown variable: $rv")
+            case _: AbsRefProp =>
+        }
+        v
+      }
   }
 
   /** transfer function */
@@ -334,6 +349,7 @@ object TypeAnalyzer {
     paramType: Boolean = true,
     returnType: Boolean = true,
     dupAssign: Boolean = true,
+    unknownVar: Boolean = true,
     uncheckedAbrupt: Boolean = false,
   )
 }
