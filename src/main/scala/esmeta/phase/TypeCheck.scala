@@ -61,6 +61,11 @@ case object TypeCheck extends Phase[CFG, AbsSemantics] {
       BoolOption(c => c.log = true),
       "turn on logging mode.",
     ),
+    (
+      "priority",
+      NumOption((c, n) => PRIORITY_FLAG = n),
+      "turn on all type mismatches with a priority higher(1 is highest) than or equal.",
+    ),
   )
   case class Config(
     var target: Option[String] = None,
