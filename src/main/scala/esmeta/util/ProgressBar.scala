@@ -18,6 +18,7 @@ case class ProgressBar[T](
   timeLimit: Option[Int] = None, // seconds
   verbose: Boolean = true,
   detail: Boolean = true,
+  concurrent: Boolean = false,
 ) extends Iterable[T] {
   // summary
   val summary =
@@ -78,17 +79,26 @@ case class ProgressBar[T](
         println(s"  - T: timeout targets")
         println(s"  - N: not supported targets")
       show
-
-    for ((x, idx) <- iterable.zipWithIndex)
-      val name = getName(x, baseSize + idx)
-      getError {
-        f(x)
-        summary.pass.add(name)
-      }.map(errorHandler(_, summary, name))
-      gcount += 1
+    if (concurrent)
+      val tests =
+        for ((x, idx) <- iterable.zipWithIndex)
+          yield () =>
+            val name = getName(x, baseSize + idx)
+            (getError { f(x) }, name)
+      val results = esmeta.util.SystemUtils.concurrent(tests).toList.foreach {
+        case (None, name)    => summary.pass.add(name)
+        case (Some(e), name) => errorHandler(e, summary, name)
+      }
+    else
+      for ((x, idx) <- iterable.zipWithIndex)
+        val name = getName(x, baseSize + idx)
+        getError {
+          f(x)
+          summary.pass.add(name)
+        }.map(errorHandler(_, summary, name))
+        gcount += 1
 
     updateTime
-
     if (verbose) Thread.sleep(term)
   }
 
