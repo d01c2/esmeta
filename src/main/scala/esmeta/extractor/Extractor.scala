@@ -18,10 +18,15 @@ object Extractor:
     document: Document,
     version: Option[Spec.Version],
     eval: Boolean,
-  ): Spec = new Extractor(document, version, eval).result
+    concurrent: Boolean,
+  ): Spec = new Extractor(document, version, eval, concurrent).result
 
   /** extracts a specification with a target version of ECMA-262 */
-  def apply(targetOpt: Option[String] = None, eval: Boolean = false): Spec =
+  def apply(
+    targetOpt: Option[String] = None,
+    eval: Boolean = false,
+    concurrent: Boolean = false,
+  ): Spec =
     val (version, document) = Spec.getVersionWith(targetOpt) {
       case version =>
         // if bugfix patch exists, apply it to spec.html
@@ -31,7 +36,7 @@ object Extractor:
         }
         document
     }
-    apply(document, Some(version), eval)
+    apply(document, Some(version), eval, concurrent)
 
   /** extracts a specification with a target version of ECMA-262 */
   def apply(target: String): Spec = apply(Some(target))
@@ -41,6 +46,7 @@ class Extractor(
   document: Document,
   version: Option[Spec.Version] = None,
   eval: Boolean = false,
+  concurrent: Boolean = false,
 ) extends SpecParsers {
   lazy val parser: LangUtil.Parsers =
     if (eval) LangUtil.ParserForEval else LangUtil.Parser
@@ -66,7 +72,7 @@ class Extractor(
   lazy val idxMap = grammar.idxMap
 
   /** abstract algorithms in ECMA-262 */
-  lazy val algorithms = extractAlgorithms
+  lazy val algorithms = extractAlgorithms(concurrent)
 
   /** tables in ECMA-262 */
   lazy val tables = extractTables
@@ -88,7 +94,7 @@ class Extractor(
   }
 
   /** extracts algorithms */
-  def extractAlgorithms: List[Algorithm] =
+  def extractAlgorithms(concurrent: Boolean): List[Algorithm] =
     // XXX load manually created algorithms
     var manualJobs = for {
       file <- manualInfo.algoFiles
@@ -102,7 +108,9 @@ class Extractor(
       elem <- document.getElems("emu-alg:not([example])")
     } yield () => extractAlgorithm(elem)
 
-    concurrent(manualJobs ++ jobs).toList.flatten
+    if (concurrent)
+      esmeta.util.SystemUtils.concurrent(manualJobs ++ jobs).toList.flatten
+    else (manualJobs ++ jobs).map(f => f()).flatten
 
   /** extracts an algorithm */
   def extractAlgorithm(elem: Element): List[Algorithm] = for {

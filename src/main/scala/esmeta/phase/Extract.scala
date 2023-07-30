@@ -19,7 +19,7 @@ case object Extract extends Phase[Unit, Spec] {
     cmdConfig: CommandConfig,
     config: Config,
   ): Spec = if (!config.repl) {
-    lazy val spec = Extractor(config.target, config.eval)
+    lazy val spec = Extractor(config.target, config.eval, config.concurrent)
     if (config.eval)
       time("extracting specification", spec)
       println(f"- # of actual parsing: $getParseCount%,d")
@@ -100,6 +100,19 @@ case object Extract extends Phase[Unit, Spec] {
       "set the target git version of ECMA-262 (default: current version).",
     ),
     (
+      "concurrent",
+      StrOption((c, s) =>
+        if s == "true" then c.concurrent = true
+        else if s == "false" then c.concurrent = false
+        else
+          warn(
+            "invalid value for concurrent option. Using default value of true.",
+          )
+        ,
+      ),
+      "set the concurrent mode (default: true).",
+    ),
+    (
       "log",
       BoolOption(c => c.log = true),
       "turn on logging mode.",
@@ -120,5 +133,6 @@ case object Extract extends Phase[Unit, Spec] {
     var log: Boolean = false,
     var eval: Boolean = false,
     var repl: Boolean = false,
+    var concurrent: Boolean = true,
   )
 }
